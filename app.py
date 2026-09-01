@@ -175,8 +175,11 @@ if menu == "🚪 Abmelden":
     st.rerun()
 
 elif menu == "📅 Termine":
-    st.header("📅 Gespeicherte Termine")
-    st.markdown("Kompakte Übersicht aller eingetragenen Termine.")
+    # Kleinere Überschrift gewählt (Markdown statt st.header)
+    st.markdown(
+        "### 📅 Gespeicherte Termine",
+        help="Übersicht aller eingetragenen Termine",
+    )
 
     if not st.session_state.termine:
         st.info(
@@ -206,27 +209,21 @@ elif menu == "📅 Termine":
             border_color = "#ff4b4b" if is_past else "#4b8bbe"
             status_icon = "🔴" if is_past else "📅"
 
-            # Kleinere & kompaktere Darstellung mittels kompakterem HTML & Spalten für den Lösch-Button
-            col_t_info, col_t_btn = [
-                st.columns([5, 1])[0],
-                st.columns([5, 1])[1],
-            ]
-
-            # Wir fassen das Info-Design kompakter zusammen
             notiz_text = (
                 f" | <i>{term['notiz']}</i>" if term["notiz"] else ""
             )
 
+            # Extrem kompakter Abstand (margin-bottom stark reduziert auf 3px)
             st.markdown(
                 f"""
-                <div style="padding: 8px 12px; border-radius: 6px; background-color: {bg_color}; border-left: 4px solid {border_color}; margin-bottom: 8px; font-size: 0.9em;">
+                <div style="padding: 6px 10px; border-radius: 5px; background-color: {bg_color}; border-left: 4px solid {border_color}; margin-bottom: 3px; font-size: 0.9em;">
                     <b>{status_icon} {term['titel']}</b> &nbsp;|&nbsp; 🕒 <b>{term['datum']}</b>, {term['uhrzeit']} Uhr{notiz_text}
                 </div>
                 """,
                 unsafe_allow_html=True,
             )
 
-            # Sicherheitsabfrage für Termin-Löschung kompakter gelöst
+            # Löschen-Button direkt eng darunter
             del_term_key = f"confirm_del_term_{term['id']}_{idx}"
             if st.session_state.get(del_term_key, False):
                 st.warning("Termin wirklich löschen?")
@@ -251,7 +248,6 @@ elif menu == "📅 Termine":
                         st.session_state[del_term_key] = False
                         st.rerun()
             else:
-                # Kleinerer Button direkt darunter oder daneben
                 if st.button(
                     "🗑️ Löschen",
                     key=f"del_term_{term['id']}_{idx}",
@@ -260,8 +256,9 @@ elif menu == "📅 Termine":
                     st.session_state[del_term_key] = True
                     st.rerun()
 
+            # Minimaler Trenner zwischen den Termineinträgen
             st.markdown(
-                "<div style='margin-bottom: 4px;'></div>",
+                "<div style='margin-bottom: 8px;'></div>",
                 unsafe_allow_html=True,
             )
 
