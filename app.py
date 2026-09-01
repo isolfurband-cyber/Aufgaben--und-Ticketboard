@@ -131,7 +131,7 @@ menu = st.sidebar.selectbox(
     ],
 )
 
-# 1. BEREICH: PROTOKOLLE & APPS IN DER MITTE DER SIDEBAR
+# 1. BEREICH: PROTOKOLLE & APPS IN DER MITTE DER SIDEBAR (Inkl. Quittungs-App)
 st.sidebar.markdown("---")
 st.sidebar.subheader("🌐 KARE-Protokolle & Apps")
 st.sidebar.markdown(
@@ -140,6 +140,7 @@ st.sidebar.markdown(
 - [💥 Schadenprotokoll](https://schadenprotokoll-ge8xt8a7tkjcb44m4te8zo.streamlit.app/)
 - [🏠 Wohnungsprotokoll](https://wohnungsprotokoll-aoectc2n5tvphcg5eevjsm.streamlit.app/)
 - [📂 Ordnungs- & Verstoßprotokoll](https://qyzzw9sm7htvbfuj6sc8k6.streamlit.app/)
+- [🧾 Quittungen](https://aufgaben--und-ticketboard-jago3m8goqpy2vbmkg4wza.streamlit.app/)
 """,
     unsafe_allow_html=True,
 )
@@ -559,78 +560,3 @@ elif menu == "📊 Dashboard & Tickets":
                         key=f"more_upload_{t.get('id', 0)}",
                     )
                     add_more_btn = st.form_submit_button(
-                        "Dateien zum Ticket hochladen"
-                    )
-                    if add_more_btn and more_files:
-                        if "anhaenge" not in t:
-                            t["anhaenge"] = []
-                        for file in more_files:
-                            bdata = file.read()
-                            b64_enc = base64.b64encode(bdata).decode(
-                                "utf-8"
-                            )
-                            t["anhaenge"].append(
-                                {
-                                    "name": file.name,
-                                    "data": b64_enc,
-                                    "type": file.type,
-                                }
-                            )
-                        save_tickets(st.session_state.tickets)
-                        st.success("Neue Dateien erfolgreich hinzugefügt!")
-                        st.rerun()
-
-                st.markdown("---")
-                col_act1, col_act2 = st.columns(2)
-                with col_act1:
-                    neuer_status = st.selectbox(
-                        "Status ändern",
-                        ["Offen", "In Bearbeitung", "Erledigt"],
-                        index=[
-                            "Offen",
-                            "In Bearbeitung",
-                            "Erledigt",
-                        ].index(t.get("status", "Offen")),
-                        key=f"status_select_{t.get('id', 0)}_{idx}",
-                    )
-                    if neuer_status != t.get("status"):
-                        t["status"] = neuer_status
-                        save_tickets(st.session_state.tickets)
-                        st.success("Status aktualisiert!")
-                        st.rerun()
-
-                with col_act2:
-                    del_ticket_key = (
-                        f"confirm_del_ticket_{t.get('id', 0)}_{idx}"
-                    )
-                    if st.session_state.get(del_ticket_key, False):
-                        st.warning("Gesamtes Ticket wirklich löschen?")
-                        col_ty1, col_ty2 = st.columns(2)
-                        with col_ty1:
-                            if st.button(
-                                "Ja, löschen",
-                                key=f"yes_ticket_{t.get('id', 0)}_{idx}",
-                            ):
-                                st.session_state.tickets = [
-                                    item
-                                    for item in st.session_state.tickets
-                                    if item["id"] != t.get("id")
-                                ]
-                                save_tickets(st.session_state.tickets)
-                                st.session_state[del_ticket_key] = False
-                                st.success("Ticket gelöscht!")
-                                st.rerun()
-                        with col_ty2:
-                            if st.button(
-                                "Abbrechen",
-                                key=f"no_ticket_{t.get('id', 0)}_{idx}",
-                            ):
-                                st.session_state[del_ticket_key] = False
-                                st.rerun()
-                    else:
-                        if st.button(
-                            "🗑️ Ticket komplett löschen",
-                            key=f"del_{t.get('id', 0)}_{idx}",
-                        ):
-                            st.session_state[del_ticket_key] = True
-                            st.rerun()
