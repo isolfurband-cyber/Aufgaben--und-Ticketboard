@@ -176,7 +176,7 @@ if menu == "🚪 Abmelden":
 
 elif menu == "📅 Termine":
     st.header("📅 Gespeicherte Termine")
-    st.markdown("Übersicht aller eingetragenen Termine.")
+    st.markdown("Kompakte Übersicht aller eingetragenen Termine.")
 
     if not st.session_state.termine:
         st.info(
@@ -199,56 +199,71 @@ elif menu == "📅 Termine":
 
             is_past = t_datum_obj < heute
             bg_color = (
-                "rgba(255, 75, 75, 0.15)"
+                "rgba(255, 75, 75, 0.12)"
                 if is_past
-                else "rgba(255, 255, 255, 0.05)"
+                else "rgba(255, 255, 255, 0.04)"
             )
             border_color = "#ff4b4b" if is_past else "#4b8bbe"
             status_icon = "🔴" if is_past else "📅"
 
-            with st.container():
-                st.markdown(
-                    f"""
-                    <div style="padding: 15px; border-radius: 8px; background-color: {bg_color}; border-left: 5px solid {border_color}; margin-bottom: 15px;">
-                        <h3>{status_icon} {term['titel']}</h3>
-                        <p style="margin: 5px 0;">🕒 <b>Datum:</b> {term['datum']} — <b>Uhrzeit:</b> {term['uhrzeit']} Uhr</p>
-                        <p style="margin: 5px 0; color: #555;"><b>Notiz:</b> {term['notiz'] if term['notiz'] else 'Keine Notizen vorhanden.'}</p>
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
+            # Kleinere & kompaktere Darstellung mittels kompakterem HTML & Spalten für den Lösch-Button
+            col_t_info, col_t_btn = [
+                st.columns([5, 1])[0],
+                st.columns([5, 1])[1],
+            ]
 
-                # Sicherheitsabfrage für Termin-Löschung
-                del_term_key = f"confirm_del_term_{term['id']}_{idx}"
-                if st.session_state.get(del_term_key, False):
-                    st.warning("Diesen Termin wirklich löschen?")
-                    col_ya1, col_ya2 = st.columns(2)
-                    with col_ya1:
-                        if st.button(
-                            "Ja, löschen", key=f"yes_term_{term['id']}_{idx}"
-                        ):
-                            st.session_state.termine = [
-                                item
-                                for item in st.session_state.termine
-                                if item["id"] != term["id"]
-                            ]
-                            save_termine(st.session_state.termine)
-                            st.session_state[del_term_key] = False
-                            st.success("Termin gelöscht!")
-                            st.rerun()
-                    with col_ya2:
-                        if st.button(
-                            "Abbrechen", key=f"no_term_{term['id']}_{idx}"
-                        ):
-                            st.session_state[del_term_key] = False
-                            st.rerun()
-                else:
+            # Wir fassen das Info-Design kompakter zusammen
+            notiz_text = (
+                f" | <i>{term['notiz']}</i>" if term["notiz"] else ""
+            )
+
+            st.markdown(
+                f"""
+                <div style="padding: 8px 12px; border-radius: 6px; background-color: {bg_color}; border-left: 4px solid {border_color}; margin-bottom: 8px; font-size: 0.9em;">
+                    <b>{status_icon} {term['titel']}</b> &nbsp;|&nbsp; 🕒 <b>{term['datum']}</b>, {term['uhrzeit']} Uhr{notiz_text}
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+            # Sicherheitsabfrage für Termin-Löschung kompakter gelöst
+            del_term_key = f"confirm_del_term_{term['id']}_{idx}"
+            if st.session_state.get(del_term_key, False):
+                st.warning("Termin wirklich löschen?")
+                col_ya1, col_ya2 = st.columns(2)
+                with col_ya1:
                     if st.button(
-                        "🗑️ Termin löschen", key=f"del_term_{term['id']}_{idx}"
+                        "Ja, löschen", key=f"yes_term_{term['id']}_{idx}"
                     ):
-                        st.session_state[del_term_key] = True
+                        st.session_state.termine = [
+                            item
+                            for item in st.session_state.termine
+                            if item["id"] != term["id"]
+                        ]
+                        save_termine(st.session_state.termine)
+                        st.session_state[del_term_key] = False
+                        st.success("Gelöscht!")
                         st.rerun()
-                st.markdown("---")
+                with col_ya2:
+                    if st.button(
+                        "Abbrechen", key=f"no_term_{term['id']}_{idx}"
+                    ):
+                        st.session_state[del_term_key] = False
+                        st.rerun()
+            else:
+                # Kleinerer Button direkt darunter oder daneben
+                if st.button(
+                    "🗑️ Löschen",
+                    key=f"del_term_{term['id']}_{idx}",
+                    help="Termin löschen",
+                ):
+                    st.session_state[del_term_key] = True
+                    st.rerun()
+
+            st.markdown(
+                "<div style='margin-bottom: 4px;'></div>",
+                unsafe_allow_html=True,
+            )
 
 elif menu == "➕ Neues Ticket erstellen":
     st.header("Neues Ticket / Aufgabe anlegen")
