@@ -154,6 +154,7 @@ st.sidebar.subheader("Termine (Neueste / Fernste zuerst)")
 if not st.session_state.termine:
     st.sidebar.info("Keine Termine vorhanden.")
 else:
+    # Sortierung: Weitestes/spätestes Datum steht ganz oben (reverse=True)
     sorted_termine = sorted(
         st.session_state.termine, key=lambda x: x["datum"], reverse=True
     )
@@ -210,6 +211,20 @@ else:
             if st.sidebar.button("🗑️ Löschen", key=f"del_term_{term['id']}_{idx}"):
                 st.session_state[del_term_key] = True
                 st.rerun()
+
+# --- NEUER BEREICH: SCHNELLZUGRIFF AUF DIE WEITEREN KARE-APPS ---
+st.sidebar.markdown("---")
+st.sidebar.subheader("🌐 KARE-Protokolle & Apps")
+st.sidebar.markdown(
+    """
+- [🏗️ Baustellenprotokoll](https://baustellenprotokoll-nwka229yyd9brp6zkbtwal.streamlit.app/)
+- [💥 Schadenprotokoll](https://schadenprotokoll-ge8xt8a7tkjcb44m4te8zo.streamlit.app/)
+- [🏠 Wohnungsprotokoll](https://wohnungsprotokoll-aoectc2n5tvphcg5eevjsm.streamlit.app/)
+- [📂 Weitere App](https://qyzzw9sm7htvbfuj6sc8k6.streamlit.app/)
+""",
+    unsafe_allow_html=True,
+)
+
 
 # --- SEITEN-LOGIK (HAUPTBEREICH) ---
 
