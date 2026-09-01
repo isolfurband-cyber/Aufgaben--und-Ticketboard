@@ -10,11 +10,12 @@ st.set_page_config(
     layout="wide",
 )
 
-# --- KONFIGURATION & LOGIN ---
-USER_CREDENTIALS = {
-    "kare": "kare2026",
-    "admin": "immobilien32",
-}
+# --- SICHERE AUTHENTIFIZIERUNG VIA STREAMLIT SECRETS ---
+try:
+    USER_CREDENTIALS = dict(st.secrets["credentials"])
+except Exception:
+    # Fallback für lokale Tests, falls noch keine Secrets angelegt sind
+    USER_CREDENTIALS = {"kare": "kare2026", "admin": "immobilien32"}
 
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
@@ -49,7 +50,6 @@ def load_tickets():
         with open(TICKETS_FILE, "r", encoding="utf-8") as f:
             try:
                 tickets = json.load(f)
-                # Fehlende Schlüssel bei alten Tickets automatisch ergänzen, um Abstürze zu verhindern
                 for t in tickets:
                     t.setdefault("id", 1)
                     t.setdefault("titel", "Ohne Titel")
