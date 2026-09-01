@@ -143,7 +143,11 @@ elif menu == "➕ Neues Ticket erstellen":
                         )
 
                 neues_ticket = {
-                    "id": len(st.session_state.tickets) + 1,
+                    "id": (
+                        max([t["id"] for t in st.session_state.tickets]) + 1
+                        if st.session_state.tickets
+                        else 1
+                    ),
                     "titel": titel,
                     "objekt": objekt,
                     "kategorie": kategorie,
@@ -166,12 +170,10 @@ elif menu == "➕ Neues Ticket erstellen":
 elif menu == "📊 Dashboard & Tickets":
     st.header("Aktive Tickets & Aufgaben")
 
-    # Suchfeld für Freitext
     suchbegriff = st.text_input(
         "🔍 Volltextsuche (durchsucht Titel, Objekt & Beschreibung)", ""
     )
 
-    # Filter-Optionen
     col_f1, col_f2, col_f3 = st.columns(3)
     with col_f1:
         filter_status = st.selectbox(
@@ -198,7 +200,6 @@ elif menu == "📊 Dashboard & Tickets":
 
     tickets = st.session_state.tickets
 
-    # Suchfilter anwenden
     if suchbegriff:
         query = suchbegriff.lower()
         tickets = [
@@ -209,7 +210,6 @@ elif menu == "📊 Dashboard & Tickets":
             or query in t["objekt"].lower()
         ]
 
-    # Dropdown-Filter anwenden
     if filter_status != "Alle":
         tickets = [t for t in tickets if t["status"] == filter_status]
     if filter_prio != "Alle":
@@ -243,19 +243,131 @@ elif menu == "📊 Dashboard & Tickets":
                     st.write(f"**Aktueller Status:** {t['status']}")
                     st.write(f"**Priorität:** {t['priorität']}")
 
-                st.markdown(f"**Beschreibung:**\n> {t['beschreibung']}")
+                st.markdown("---")
+
+                # Beschreibung bearbeiten
+                edit_key = f"edit_desc_mode_{t['id']}"
+                if edit_key not in st.session_state:
+                    st.session_state[edit_key] = False
+
+                st.markdown("**Beschreibung:**")
+                if st.session_state[edit_key]:
+                    new_desc = st.text_area(
+                        "Beschreibung bearbeiten",
+                        value=t["beschreibung"],
+                        key=f"desc_area_{t['id']}",
+                    )
+                    col_b1, col_b2 = st.columns(2)
+                    with col_b1:
+                        if st.button(
+                            "💾 Ändern speichern", key=f"save_desc_{t['id']}"
+                        ):
+                            t["beschreibung"] = new_desc
+                            save_tickets(st.session_state.tickets)
+                            st.session_state[edit_key] = False
+                            st.success("Beschreibung aktualisiert!")
+                            st.rerun()
+                    with col_b2:
+                        if st.button(
+                            "Abbrechen", key=f"cancel_desc_{t['id']}"
+                        ):
+                            st.session_state[edit_key] = False
+                            st.rerun()
+                else:
+                    st.markdown(f"> {t['beschreibung']}")
+                    if st.button(
+                        "✏️ Beschreibung bearbeiten",
+                        key=f"btn_edit_{t['id']}",
+                    ):
+                        st.session_state[edit_key] = True
+                        st.rerun()
+
+                st.markdown("---")
+                st.markdown("**Angehängte Dokumente & Dateien:**")
 
                 if t.get("anhaenge"):
-                    st.markdown("**Angehängte Dokumente:**")
-                    for anhang in t["anhaenge"]:
+                    for f_idx, anhang in enumerate(t["anhaenge"]):
                         file_bytes = base64.b64decode(anhang["data"])
-                        st.download_button(
-                            label=f"📥 Herunterladen: {anhang['name']}",
-                            data=file_bytes,
-                            file_name=anhang["name"],
-                            mime=anhang["type"],
-                            key=f"dl_{t['id']}_{anhang['name']}_{idx}",
-                        )
+                        col_fn, col_fv, col_fd = st.columns([4, 1.5, 1])
+                        with col_fn:
+                            st.write(f"📄 {anhang['name']}")
+                        with col_fv:
+                            show_key = f"show_{t['id']}_{f_idx}"
+                            if st.button(
+                                "👁️ Ansehen", key=f"btn_prev_{t['id']}_{f_idx}"
+                            ):
+                                st.session_state[show_key] = not st.session_state.get(
+                                    show_key, False
+                                )
+                        with col_fd:
+                            if st.button(
+                                "🗑️ Löschen", key=f"del_file_{t['id']}_{f_idx}"
+                            ):
+                                t["anhaenge"].pop(f_idx)
+                                save_tickets(st.session_state.tickets)
+                                st.success("Datei gelöscht!")
+                                st.rerun()
+
+                        # Datei-Vorschau im Browser
+                        if st.session_state.get(
+                            f"show_{t['id']}_{f_idx}", False
+                        ):
+                            if "image" in anhang["type"] or anhang[
+                                "name"
+                            ].lower().endswith((".png", ".jpg", ".jpeg")):
+                                st.image(
+                                    file_bytes,
+                                    caption=anhang["name"],
+                                    use_container_width=True,
+                                )
+                            elif "pdf" in anhang["type"] or anhang[
+                                "name"
+                            ].lower().endswith(".pdf"):
+                                b64_pdf = base64.b64encode(file_bytes).decode(
+                                    "utf-8"
+                                )
+                                pdf_display = f'<iframe src="data:application/pdf;base64,{b64_pdf}" width="100%" height="600px" type="application/pdf"></iframe>'
+                                st.markdown(pdf_display, unsafe_allow_html=True)
+                            else:
+                                st.download_button(
+                                    label=(
+                                        f"📥 Herunterladen: {anhang['name']}"
+                                    ),
+                                    data=file_bytes,
+                                    file_name=anhang["name"],
+                                    mime=anhang["type"],
+                                    key=f"dl_fallback_{t['id']}_{f_idx}",
+                                )
+                else:
+                    st.write("Keine Dateien angehängt.")
+
+                # Weitere Dateien hinzufügen
+                with st.form(key=f"add_more_form_{t['id']}"):
+                    more_files = st.file_uploader(
+                        "Weitere Dateien hinzufügen",
+                        type=["pdf", "png", "jpg", "jpeg"],
+                        accept_multiple_files=True,
+                        key=f"more_upload_{t['id']}",
+                    )
+                    add_more_btn = st.form_submit_button(
+                        "Dateien zum Ticket hochladen"
+                    )
+                    if add_more_btn and more_files:
+                        if "anhaenge" not in t:
+                            t["anhaenge"] = []
+                        for file in more_files:
+                            bdata = file.read()
+                            b64_enc = base64.b64encode(bdata).decode("utf-8")
+                            t["anhaenge"].append(
+                                {
+                                    "name": file.name,
+                                    "data": b64_enc,
+                                    "type": file.type,
+                                }
+                            )
+                        save_tickets(st.session_state.tickets)
+                        st.success("Neue Dateien erfolgreich hinzugefügt!")
+                        st.rerun()
 
                 st.markdown("---")
                 col_act1, col_act2 = st.columns(2)
@@ -278,7 +390,7 @@ elif menu == "📊 Dashboard & Tickets":
 
                 with col_act2:
                     if st.button(
-                        "🗑️ Ticket löschen", key=f"del_{t['id']}_{idx}"
+                        "🗑️ Ticket komplett löschen", key=f"del_{t['id']}_{idx}"
                     ):
                         st.session_state.tickets = [
                             item
