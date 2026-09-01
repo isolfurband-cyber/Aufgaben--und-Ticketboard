@@ -106,7 +106,6 @@ if "termine" not in st.session_state:
     st.session_state.termine = load_termine()
 
 # --- HAUPTAPP (NACH LOGIN) ---
-# Hier über font-size: 1.5rem; die Größe explizit kleiner eingestellt
 st.markdown(
     """
     <div style='font-size: 1.5rem; font-weight: bold; margin-bottom: 0px;'>
@@ -131,7 +130,7 @@ menu = st.sidebar.selectbox(
     ],
 )
 
-# 1. BEREICH: PROTOKOLLE & APPS IN DER MITTE DER SIDEBAR (Inkl. Quittungs-App)
+# 1. BEREICH: PROTOKOLLE & APPS IN DER MITTE DER SIDEBAR (Inkl. Quittungen)
 st.sidebar.markdown("---")
 st.sidebar.subheader("🌐 KARE-Protokolle & Apps")
 st.sidebar.markdown(
@@ -559,4 +558,24 @@ elif menu == "📊 Dashboard & Tickets":
                         accept_multiple_files=True,
                         key=f"more_upload_{t.get('id', 0)}",
                     )
-                    add_more_btn = st.form_submit_button(
+                    add_more_btn = st.form_submit_button("Dateien hinzufügen")
+
+                    if add_more_btn:
+                        if more_files:
+                            for file in more_files:
+                                bytes_data = file.read()
+                                b64_encoded = base64.b64encode(bytes_data).decode(
+                                    "utf-8"
+                                )
+                                t["anhaenge"].append(
+                                    {
+                                        "name": file.name,
+                                        "data": b64_encoded,
+                                        "type": file.type,
+                                    }
+                                )
+                            save_tickets(st.session_state.tickets)
+                            st.success("Dateien erfolgreich hinzugefügt!")
+                            st.rerun()
+                        else:
+                            st.warning("Bitte wähle erst Dateien aus.")
