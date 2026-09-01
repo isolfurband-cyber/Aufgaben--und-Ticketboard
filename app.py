@@ -154,7 +154,6 @@ st.sidebar.subheader("Termine (Neueste / Fernste zuerst)")
 if not st.session_state.termine:
     st.sidebar.info("Keine Termine vorhanden.")
 else:
-    # Sortierung umgedreht: reverse=True bedeutet das weiteste/späteste Datum steht ganz oben
     sorted_termine = sorted(
         st.session_state.termine, key=lambda x: x["datum"], reverse=True
     )
@@ -187,15 +186,30 @@ else:
             unsafe_allow_html=True,
         )
 
-        if st.sidebar.button("🗑️ Löschen", key=f"del_term_{term['id']}_{idx}"):
-            st.session_state.termine = [
-                item
-                for item in st.session_state.termine
-                if item["id"] != term["id"]
-            ]
-            save_termine(st.session_state.termine)
-            st.sidebar.success("Gelöscht!")
-            st.rerun()
+        # Sicherheitsabfrage für Termin-Löschung
+        del_term_key = f"confirm_del_term_{term['id']}_{idx}"
+        if st.session_state.get(del_term_key, False):
+            st.sidebar.warning("Termin wirklich löschen?")
+            col_ya1, col_ya2 = st.sidebar.columns(2)
+            with col_ya1:
+                if st.button("Ja, löschen", key=f"yes_term_{term['id']}_{idx}"):
+                    st.session_state.termine = [
+                        item
+                        for item in st.session_state.termine
+                        if item["id"] != term["id"]
+                    ]
+                    save_termine(st.session_state.termine)
+                    st.session_state[del_term_key] = False
+                    st.sidebar.success("Termin gelöscht!")
+                    st.rerun()
+            with col_ya2:
+                if st.button("Abbrechen", key=f"no_term_{term['id']}_{idx}"):
+                    st.session_state[del_term_key] = False
+                    st.rerun()
+        else:
+            if st.sidebar.button("🗑️ Löschen", key=f"del_term_{term['id']}_{idx}"):
+                st.session_state[del_term_key] = True
+                st.rerun()
 
 # --- SEITEN-LOGIK (HAUPTBEREICH) ---
 
@@ -427,14 +441,35 @@ elif menu == "📊 Dashboard & Tickets":
                                     show_key, False
                                 )
                         with col_fd:
-                            if st.button(
-                                "🗑️ Löschen",
-                                key=f"del_file_{t.get('id', 0)}_{f_idx}",
-                            ):
-                                t["anhaenge"].pop(f_idx)
-                                save_tickets(st.session_state.tickets)
-                                st.success("Datei gelöscht!")
-                                st.rerun()
+                            # Sicherheitsabfrage für Datei-Löschung
+                            del_file_key = f"confirm_del_file_{t.get('id', 0)}_{f_idx}"
+                            if st.session_state.get(del_file_key, False):
+                                st.warning("Datei löschen?")
+                                c_y, c_n = st.columns(2)
+                                with c_y:
+                                    if st.button(
+                                        "Ja",
+                                        key=f"yes_file_{t.get('id', 0)}_{f_idx}",
+                                    ):
+                                        t["anhaenge"].pop(f_idx)
+                                        save_tickets(st.session_state.tickets)
+                                        st.session_state[del_file_key] = False
+                                        st.success("Gelöscht!")
+                                        st.rerun()
+                                with c_n:
+                                    if st.button(
+                                        "Nein",
+                                        key=f"no_file_{t.get('id', 0)}_{f_idx}",
+                                    ):
+                                        st.session_state[del_file_key] = False
+                                        st.rerun()
+                            else:
+                                if st.button(
+                                    "🗑️ Löschen",
+                                    key=f"del_file_{t.get('id', 0)}_{f_idx}",
+                                ):
+                                    st.session_state[del_file_key] = True
+                                    st.rerun()
 
                         if st.session_state.get(
                             f"show_{t.get('id', 0)}_{f_idx}", False
@@ -517,15 +552,36 @@ elif menu == "📊 Dashboard & Tickets":
                         st.rerun()
 
                 with col_act2:
-                    if st.button(
-                        "🗑️ Ticket komplett löschen",
-                        key=f"del_{t.get('id', 0)}_{idx}",
-                    ):
-                        st.session_state.tickets = [
-                            item
-                            for item in st.session_state.tickets
-                            if item["id"] != t.get("id")
-                        ]
-                        save_tickets(st.session_state.tickets)
-                        st.success("Ticket gelöscht!")
-                        st.rerun()
+                    # Sicherheitsabfrage für Ticket-Löschung
+                    del_ticket_key = f"confirm_del_ticket_{t.get('id', 0)}_{idx}"
+                    if st.session_state.get(del_ticket_key, False):
+                        st.warning("Gesamtes Ticket wirklich löschen?")
+                        col_ty1, col_ty2 = st.columns(2)
+                        with col_ty1:
+                            if st.button(
+                                "Ja, löschen",
+                                key=f"yes_ticket_{t.get('id', 0)}_{idx}",
+                            ):
+                                st.session_state.tickets = [
+                                    item
+                                    for item in st.session_state.tickets
+                                    if item["id"] != t.get("id")
+                                ]
+                                save_tickets(st.session_state.tickets)
+                                st.session_state[del_ticket_key] = False
+                                st.success("Ticket gelöscht!")
+                                st.rerun()
+                        with col_ty2:
+                            if st.button(
+                                "Abbrechen",
+                                key=f"no_ticket_{t.get('id', 0)}_{idx}",
+                            ):
+                                st.session_state[del_ticket_key] = False
+                                st.rerun()
+                    else:
+                        if st.button(
+                            "🗑️ Ticket komplett löschen",
+                            key=f"del_{t.get('id', 0)}_{idx}",
+                        ):
+                            st.session_state[del_ticket_key] = True
+                            st.rerun()
