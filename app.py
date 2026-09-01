@@ -11,7 +11,6 @@ st.set_page_config(
 )
 
 # --- KONFIGURATION & LOGIN ---
-# Benutzer und Passwörter (können hier angepasst werden)
 USER_CREDENTIALS = {
     "kare": "kare2026",
     "admin": "immobilien32",
@@ -38,10 +37,8 @@ if not st.session_state.authenticated:
                 st.session_state.user = username
                 st.rerun()
             else:
-                st.error(
-                    "Falscher Benutzername oder falsches Passwort!"
-                )
-    st.stop()  # Stoppt die Ausführung, solange nicht eingeloggt
+                st.error("Falscher Benutzername oder falsches Passwort!")
+    st.stop()
 
 # --- DATENPERSISTENZ (JSON DATEI) ---
 TICKETS_FILE = "tickets.json"
@@ -71,7 +68,6 @@ st.markdown(
     f"Eingeloggt als: **{st.session_state.user}** | Talstr. 32, 07545 Gera"
 )
 
-# Sidebar für Navigation / Aktionen
 menu = st.sidebar.selectbox(
     "Menü",
     ["📊 Dashboard & Tickets", "➕ Neues Ticket erstellen", "🚪 Abmelden"],
@@ -117,7 +113,6 @@ elif menu == "➕ Neues Ticket erstellen":
             placeholder="Genaue Beschreibung des Sachverhalts...",
         )
 
-        # Dokumente / Dateien Upload
         uploaded_files = st.file_uploader(
             "Dokumente / Fotos anhängen (PDF, JPG, PNG)",
             type=["pdf", "png", "jpg", "jpeg"],
@@ -132,7 +127,6 @@ elif menu == "➕ Neues Ticket erstellen":
             if not titel:
                 st.error("Bitte gib mindestens einen Titel für das Ticket ein!")
             else:
-                # Dateien für JSON aufbereiten (Base64 speichern)
                 anhänge = []
                 if uploaded_files:
                     for file in uploaded_files:
@@ -170,7 +164,12 @@ elif menu == "➕ Neues Ticket erstellen":
                 )
 
 elif menu == "📊 Dashboard & Tickets":
-    st.setHeader = st.header("Aktive Tickets & Aufgaben")
+    st.header("Aktive Tickets & Aufgaben")
+
+    # Suchfeld für Freitext
+    suchbegriff = st.text_input(
+        "🔍 Volltextsuche (durchsucht Titel, Objekt & Beschreibung)", ""
+    )
 
     # Filter-Optionen
     col_f1, col_f2, col_f3 = st.columns(3)
@@ -199,7 +198,18 @@ elif menu == "📊 Dashboard & Tickets":
 
     tickets = st.session_state.tickets
 
-    # Filter anwenden
+    # Suchfilter anwenden
+    if suchbegriff:
+        query = suchbegriff.lower()
+        tickets = [
+            t
+            for t in tickets
+            if query in t["titel"].lower()
+            or query in t["beschreibung"].lower()
+            or query in t["objekt"].lower()
+        ]
+
+    # Dropdown-Filter anwenden
     if filter_status != "Alle":
         tickets = [t for t in tickets if t["status"] == filter_status]
     if filter_prio != "Alle":
@@ -211,7 +221,6 @@ elif menu == "📊 Dashboard & Tickets":
         st.info("Keine Tickets gefunden, die den Filterkriterien entsprechen.")
     else:
         for idx, t in enumerate(reversed(tickets)):
-            # Farbliche Kennzeichnung je nach Priorität
             prio_color = (
                 "🔴"
                 if "Dringend" in t["priorität"]
@@ -236,7 +245,6 @@ elif menu == "📊 Dashboard & Tickets":
 
                 st.markdown(f"**Beschreibung:**\n> {t['beschreibung']}")
 
-                # Anhänge anzeigen / herunterladen
                 if t.get("anhaenge"):
                     st.markdown("**Angehängte Dokumente:**")
                     for anhang in t["anhaenge"]:
@@ -249,7 +257,6 @@ elif menu == "📊 Dashboard & Tickets":
                             key=f"dl_{t['id']}_{anhang['name']}_{idx}",
                         )
 
-                # Status direkt ändern oder Ticket löschen
                 st.markdown("---")
                 col_act1, col_act2 = st.columns(2)
                 with col_act1:
