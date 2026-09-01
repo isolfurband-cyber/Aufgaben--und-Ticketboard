@@ -117,7 +117,7 @@ menu = st.sidebar.selectbox(
     "Menü", ["📊 Dashboard & Tickets", "➕ Neues Ticket erstellen", "🚪 Abmelden"]
 )
 
-# 1. BEREICH: PROTOKOLLE & APPS (JETZT IN DER MITTE)
+# 1. BEREICH: PROTOKOLLE & APPS IN DER MITTE DER SIDEBAR
 st.sidebar.markdown("---")
 st.sidebar.subheader("🌐 KARE-Protokolle & Apps")
 st.sidebar.markdown(
@@ -130,18 +130,17 @@ st.sidebar.markdown(
     unsafe_allow_html=True,
 )
 
-# 2. BEREICH: TERMINE (JETZT GANZ UNTEN)
+# 2. BEREICH: TERMIN-ERSTELLUNG GANZ UNTEN IN DER SIDEBAR
 st.sidebar.markdown("---")
-st.sidebar.subheader("📅 Termine")
+st.sidebar.subheader("📅 Neuen Termin erfassen")
 
-# Formular für neuen Termin direkt in der Sidebar
 with st.sidebar.form("sidebar_termin_form"):
     t_titel = st.text_input("Termin-Titel")
     t_datum = st.date_input("Datum", datetime.now())
     t_uhrzeit = st.text_input("Uhrzeit", "10:00")
     t_notiz = st.text_area("Notiz (optional)", "")
 
-    submit_sidebar_termin = st.form_submit_button("Termin hinzufügen")
+    submit_sidebar_termin = st.form_submit_button("Termin speichern")
     if submit_sidebar_termin:
         if not t_titel:
             st.sidebar.error("Bitte Titel angeben!")
@@ -159,72 +158,8 @@ with st.sidebar.form("sidebar_termin_form"):
             }
             st.session_state.termine.append(neuer_termin)
             save_termine(st.session_state.termine)
-            st.sidebar.success("Gespeichert!")
+            st.sidebar.success("Termin gespeichert!")
             st.rerun()
-
-st.sidebar.markdown("---")
-st.sidebar.subheader("Termine (Neueste / Fernste zuerst)")
-
-if not st.session_state.termine:
-    st.sidebar.info("Keine Termine vorhanden.")
-else:
-    # Sortierung: Weitestes/spätestes Datum steht ganz oben (reverse=True)
-    sorted_termine = sorted(
-        st.session_state.termine, key=lambda x: x["datum"], reverse=True
-    )
-    heute = datetime.now().date()
-
-    for idx, term in enumerate(sorted_termine):
-        try:
-            t_datum_obj = datetime.strptime(term["datum"], "%Y-%m-%d").date()
-        except ValueError:
-            t_datum_obj = heute
-
-        is_past = t_datum_obj < heute
-
-        bg_color = (
-            "rgba(255, 75, 75, 0.2)"
-            if is_past
-            else "rgba(255, 255, 255, 0.05)"
-        )
-        border_color = "#ff4b4b" if is_past else "#cccccc"
-        status_icon = "🔴" if is_past else "📅"
-
-        st.sidebar.markdown(
-            f"""
-            <div style="padding: 10px; border-radius: 6px; background-color: {bg_color}; border-left: 4px solid {border_color}; margin-bottom: 8px; font-size: 0.9em;">
-                <b>{status_icon} {term['titel']}</b><br>
-                🕒 {term['datum']} - {term['uhrzeit']} Uhr<br>
-                <span style="color: #666;">{term['notiz']}</span>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-        # Sicherheitsabfrage für Termin-Löschung
-        del_term_key = f"confirm_del_term_{term['id']}_{idx}"
-        if st.session_state.get(del_term_key, False):
-            st.sidebar.warning("Termin wirklich löschen?")
-            col_ya1, col_ya2 = st.sidebar.columns(2)
-            with col_ya1:
-                if st.button("Ja, löschen", key=f"yes_term_{term['id']}_{idx}"):
-                    st.session_state.termine = [
-                        item
-                        for item in st.session_state.termine
-                        if item["id"] != term["id"]
-                    ]
-                    save_termine(st.session_state.termine)
-                    st.session_state[del_term_key] = False
-                    st.sidebar.success("Termin gelöscht!")
-                    st.rerun()
-            with col_ya2:
-                if st.button("Abbrechen", key=f"no_term_{term['id']}_{idx}"):
-                    st.session_state[del_term_key] = False
-                    st.rerun()
-        else:
-            if st.sidebar.button("🗑️ Löschen", key=f"del_term_{term['id']}_{idx}"):
-                st.session_state[del_term_key] = True
-                st.rerun()
 
 
 # --- SEITEN-LOGIK (HAUPTBEREICH) ---
@@ -321,283 +256,381 @@ elif menu == "➕ Neues Ticket erstellen":
                 st.success("Ticket erfolgreich erstellt und gespeichert!")
 
 elif menu == "📊 Dashboard & Tickets":
-    st.header("Aktive Tickets & Aufgaben")
+    # Wir teilen den Hauptbereich in 2 Spalten auf: Links (Breiter) die Tickets, Rechts (Schmäler) die Termine
+    col_main_tickets, col_main_termine = st.columns([2.2, 1])
 
-    suchbegriff = st.text_input(
-        "🔍 Volltextsuche (durchsucht Titel, Objekt & Beschreibung)", ""
-    )
-
-    col_f1, col_f2, col_f3 = st.columns(3)
-    with col_f1:
-        filter_status = st.selectbox(
-            "Nach Status filtern",
-            ["Alle", "Offen", "In Bearbeitung", "Erledigt"],
-        )
-    with col_f2:
-        filter_prio = st.selectbox(
-            "Nach Priorität filtern",
-            ["Alle", "Niedrig", "Mittel", "Hoch", "🚨 Dringend"],
-        )
-    with col_f3:
-        filter_kat = st.selectbox(
-            "Nach Kategorie filtern",
-            [
-                "Alle",
-                "Reparatur / Handwerker",
-                "Mieteranfrage",
-                "Buchhaltung / Miete",
-                "Hausverwaltung Allgemein",
-                "Behörden / Rechtliches",
-            ],
+    with col_main_termine:
+        st.subheader("📅 Gespeicherte Termine")
+        st.markdown(
+            "<small>Neueste / Fernste zuerst</small>", unsafe_allow_html=True
         )
 
-    tickets = st.session_state.tickets
+        if not st.session_state.termine:
+            st.info("Keine Termine vorhanden.")
+        else:
+            sorted_termine = sorted(
+                st.session_state.termine,
+                key=lambda x: x["datum"],
+                reverse=True,
+            )
+            heute = datetime.now().date()
 
-    if suchbegriff:
-        query = suchbegriff.lower()
-        tickets = [
-            t
-            for t in tickets
-            if query in t.get("titel", "").lower()
-            or query in t.get("beschreibung", "").lower()
-            or query in t.get("objekt", "").lower()
-        ]
+            for idx, term in enumerate(sorted_termine):
+                try:
+                    t_datum_obj = datetime.strptime(
+                        term["datum"], "%Y-%m-%d"
+                    ).date()
+                except ValueError:
+                    t_datum_obj = heute
 
-    if filter_status != "Alle":
-        tickets = [t for t in tickets if t.get("status") == filter_status]
-    if filter_prio != "Alle":
-        tickets = [t for t in tickets if t.get("priorität") == filter_prio]
-    if filter_kat != "Alle":
-        tickets = [t for t in tickets if t.get("kategorie") == filter_kat]
+                is_past = t_datum_obj < heute
+                bg_color = (
+                    "rgba(255, 75, 75, 0.15)"
+                    if is_past
+                    else "rgba(255, 255, 255, 0.05)"
+                )
+                border_color = "#ff4b4b" if is_past else "#4b8bbe"
+                status_icon = "🔴" if is_past else "📅"
 
-    if not tickets:
-        st.info("Keine Tickets gefunden, die den Filterkriterien entsprechen.")
-    else:
-        for idx, t in enumerate(reversed(tickets)):
-            prio_color = (
-                "🔴"
-                if "Dringend" in t.get("priorität", "")
-                else "🟠"
-                if t.get("priorität") == "Hoch"
-                else "🟡"
-                if t.get("priorität") == "Mittel"
-                else "🟢"
+                st.markdown(
+                    f"""
+                    <div style="padding: 12px; border-radius: 8px; background-color: {bg_color}; border-left: 4px solid {border_color}; margin-bottom: 10px; font-size: 0.9em;">
+                        <b>{status_icon} {term['titel']}</b><br>
+                        🕒 <b>{term['datum']}</b> — {term['uhrzeit']} Uhr<br>
+                        <span style="color: #666;">{term['notiz']}</span>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+
+                # Sicherheitsabfrage für Termin-Löschung rechts
+                del_term_key = f"confirm_del_term_{term['id']}_{idx}"
+                if st.session_state.get(del_term_key, False):
+                    st.warning("Termin wirklich löschen?")
+                    col_ya1, col_ya2 = st.columns(2)
+                    with col_ya1:
+                        if st.button(
+                            "Ja", key=f"yes_term_{term['id']}_{idx}"
+                        ):
+                            st.session_state.termine = [
+                                item
+                                for item in st.session_state.termine
+                                if item["id"] != term["id"]
+                            ]
+                            save_termine(st.session_state.termine)
+                            st.session_state[del_term_key] = False
+                            st.success("Gelöscht!")
+                            st.rerun()
+                    with col_ya2:
+                        if st.button(
+                            "Nein", key=f"no_term_{term['id']}_{idx}"
+                        ):
+                            st.session_state[del_term_key] = False
+                            st.rerun()
+                else:
+                    if st.button(
+                        "🗑️ Termin löschen", key=f"del_term_{term['id']}_{idx}"
+                    ):
+                        st.session_state[del_term_key] = True
+                        st.rerun()
+
+    with col_main_tickets:
+        st.header("Aktive Tickets & Aufgaben")
+
+        suchbegriff = st.text_input(
+            "🔍 Volltextsuche (durchsucht Titel, Objekt & Beschreibung)", ""
+        )
+
+        col_f1, col_f2, col_f3 = st.columns(3)
+        with col_f1:
+            filter_status = st.selectbox(
+                "Status", ["Alle", "Offen", "In Bearbeitung", "Erledigt"]
+            )
+        with col_f2:
+            filter_prio = st.selectbox(
+                "Priorität", ["Alle", "Niedrig", "Mittel", "Hoch", "🚨 Dringend"]
+            )
+        with col_f3:
+            filter_kat = st.selectbox(
+                "Kategorie",
+                [
+                    "Alle",
+                    "Reparatur / Handwerker",
+                    "Mieteranfrage",
+                    "Buchhaltung / Miete",
+                    "Hausverwaltung Allgemein",
+                    "Behörden / Rechtliches",
+                ],
             )
 
-            with st.expander(
-                f"{prio_color} [#{t.get('id', 0)}] {t.get('titel', 'Unbenannt')} — Objekt: {t.get('objekt', '')} ({t.get('status', 'Offen')})"
-            ):
-                col_info1, col_info2 = st.columns(2)
-                with col_info1:
-                    st.write(f"**Kategorie:** {t.get('kategorie', '')}")
-                    st.write(
-                        f"**Erstellt am:** {t.get('datum', '')} von"
-                        f" {t.get('ersteller', '')}"
-                    )
-                    st.write(f"**Fällig bis:** {t.get('faellig', '')}")
-                with col_info2:
-                    st.write(f"**Aktueller Status:** {t.get('status', '')}")
-                    st.write(f"**Priorität:** {t.get('priorität', '')}")
+        tickets = st.session_state.tickets
 
-                st.markdown("---")
+        if suchbegriff:
+            query = suchbegriff.lower()
+            tickets = [
+                t
+                for t in tickets
+                if query in t.get("titel", "").lower()
+                or query in t.get("beschreibung", "").lower()
+                or query in t.get("objekt", "").lower()
+            ]
 
-                edit_key = f"edit_desc_mode_{t.get('id', 0)}"
-                if edit_key not in st.session_state:
-                    st.session_state[edit_key] = False
+        if filter_status != "Alle":
+            tickets = [t for t in tickets if t.get("status") == filter_status]
+        if filter_prio != "Alle":
+            tickets = [t for t in tickets if t.get("priorität") == filter_prio]
+        if filter_kat != "Alle":
+            tickets = [
+                t for t in tickets if t.get("kategorie") == filter_kat
+            ]
 
-                st.markdown("**Beschreibung:**")
-                if st.session_state[edit_key]:
-                    new_desc = st.text_area(
-                        "Beschreibung bearbeiten",
-                        value=t.get("beschreibung", ""),
-                        key=f"desc_area_{t.get('id', 0)}",
-                    )
-                    col_b1, col_b2 = st.columns(2)
-                    with col_b1:
-                        if st.button(
-                            "💾 Ändern speichern",
-                            key=f"save_desc_{t.get('id', 0)}",
-                        ):
-                            t["beschreibung"] = new_desc
-                            save_tickets(st.session_state.tickets)
-                            st.session_state[edit_key] = False
-                            st.success("Beschreibung aktualisiert!")
-                            st.rerun()
-                    with col_b2:
-                        if st.button(
-                            "Abbrechen", key=f"cancel_desc_{t.get('id', 0)}"
-                        ):
-                            st.session_state[edit_key] = False
-                            st.rerun()
-                else:
-                    st.markdown(f"> {t.get('beschreibung', '')}")
-                    if st.button(
-                        "✏️ Beschreibung bearbeiten",
-                        key=f"btn_edit_{t.get('id', 0)}",
-                    ):
-                        st.session_state[edit_key] = True
-                        st.rerun()
+        if not tickets:
+            st.info("Keine Tickets gefunden, die den Filterkriterien entsprechen.")
+        else:
+            for idx, t in enumerate(reversed(tickets)):
+                prio_color = (
+                    "🔴"
+                    if "Dringend" in t.get("priorität", "")
+                    else "🟠"
+                    if t.get("priorität") == "Hoch"
+                    else "🟡"
+                    if t.get("priorität") == "Mittel"
+                    else "🟢"
+                )
 
-                st.markdown("---")
-                st.markdown("**Angehängte Dokumente & Dateien:**")
+                with st.expander(
+                    f"{prio_color} [#{t.get('id', 0)}] {t.get('titel', 'Unbenannt')} — Objekt: {t.get('objekt', '')} ({t.get('status', 'Offen')})"
+                ):
+                    col_info1, col_info2 = st.columns(2)
+                    with col_info1:
+                        st.write(f"**Kategorie:** {t.get('kategorie', '')}")
+                        st.write(
+                            f"**Erstellt am:** {t.get('datum', '')} von"
+                            f" {t.get('ersteller', '')}"
+                        )
+                        st.write(f"**Fällig bis:** {t.get('faellig', '')}")
+                    with col_info2:
+                        st.write(f"**Aktueller Status:** {t.get('status', '')}")
+                        st.write(f"**Priorität:** {t.get('priorität', '')}")
 
-                if t.get("anhaenge"):
-                    for f_idx, anhang in enumerate(t["anhaenge"]):
-                        file_bytes = base64.b64decode(anhang["data"])
-                        col_fn, col_fv, col_fd = st.columns([4, 1.5, 1])
-                        with col_fn:
-                            st.write(f"📄 {anhang['name']}")
-                        with col_fv:
-                            show_key = f"show_{t.get('id', 0)}_{f_idx}"
+                    st.markdown("---")
+
+                    edit_key = f"edit_desc_mode_{t.get('id', 0)}"
+                    if edit_key not in st.session_state:
+                        st.session_state[edit_key] = False
+
+                    st.markdown("**Beschreibung:**")
+                    if st.session_state[edit_key]:
+                        new_desc = st.text_area(
+                            "Beschreibung bearbeiten",
+                            value=t.get("beschreibung", ""),
+                            key=f"desc_area_{t.get('id', 0)}",
+                        )
+                        col_b1, col_b2 = st.columns(2)
+                        with col_b1:
                             if st.button(
-                                "👁️ Ansehen",
-                                key=f"btn_prev_{t.get('id', 0)}_{f_idx}",
+                                "💾 Ändern speichern",
+                                key=f"save_desc_{t.get('id', 0)}",
                             ):
-                                st.session_state[show_key] = not st.session_state.get(
-                                    show_key, False
-                                )
-                        with col_fd:
-                            # Sicherheitsabfrage für Datei-Löschung
-                            del_file_key = f"confirm_del_file_{t.get('id', 0)}_{f_idx}"
-                            if st.session_state.get(del_file_key, False):
-                                st.warning("Datei löschen?")
-                                c_y, c_n = st.columns(2)
-                                with c_y:
-                                    if st.button(
-                                        "Ja",
-                                        key=f"yes_file_{t.get('id', 0)}_{f_idx}",
-                                    ):
-                                        t["anhaenge"].pop(f_idx)
-                                        save_tickets(st.session_state.tickets)
-                                        st.session_state[del_file_key] = False
-                                        st.success("Gelöscht!")
-                                        st.rerun()
-                                with c_n:
-                                    if st.button(
-                                        "Nein",
-                                        key=f"no_file_{t.get('id', 0)}_{f_idx}",
-                                    ):
-                                        st.session_state[del_file_key] = False
-                                        st.rerun()
-                            else:
-                                if st.button(
-                                    "🗑️ Löschen",
-                                    key=f"del_file_{t.get('id', 0)}_{f_idx}",
-                                ):
-                                    st.session_state[del_file_key] = True
-                                    st.rerun()
-
-                        if st.session_state.get(
-                            f"show_{t.get('id', 0)}_{f_idx}", False
-                        ):
-                            if "image" in anhang["type"] or anhang[
-                                "name"
-                            ].lower().endswith((".png", ".jpg", ".jpeg")):
-                                st.image(
-                                    file_bytes,
-                                    caption=anhang["name"],
-                                    use_container_width=True,
-                                )
-                            elif "pdf" in anhang["type"] or anhang[
-                                "name"
-                            ].lower().endswith(".pdf"):
-                                b64_pdf = base64.b64encode(file_bytes).decode(
-                                    "utf-8"
-                                )
-                                pdf_display = f'<iframe src="data:application/pdf;base64,{b64_pdf}" width="100%" height="600px" type="application/pdf"></iframe>'
-                                st.markdown(pdf_display, unsafe_allow_html=True)
-                            else:
-                                st.download_button(
-                                    label=(
-                                        f"📥 Herunterladen: {anhang['name']}"
-                                    ),
-                                    data=file_bytes,
-                                    file_name=anhang["name"],
-                                    mime=anhang["type"],
-                                    key=(
-                                        f"dl_fallback_{t.get('id', 0)}_{f_idx}"
-                                    ),
-                                )
-                else:
-                    st.write("Keine Dateien angehängt.")
-
-                with st.form(key=f"add_more_form_{t.get('id', 0)}"):
-                    more_files = st.file_uploader(
-                        "Weitere Dateien hinzufügen",
-                        type=["pdf", "png", "jpg", "jpeg"],
-                        accept_multiple_files=True,
-                        key=f"more_upload_{t.get('id', 0)}",
-                    )
-                    add_more_btn = st.form_submit_button(
-                        "Dateien zum Ticket hochladen"
-                    )
-                    if add_more_btn and more_files:
-                        if "anhaenge" not in t:
-                            t["anhaenge"] = []
-                        for file in more_files:
-                            bdata = file.read()
-                            b64_enc = base64.b64encode(bdata).decode("utf-8")
-                            t["anhaenge"].append(
-                                {
-                                    "name": file.name,
-                                    "data": b64_enc,
-                                    "type": file.type,
-                                }
-                            )
-                        save_tickets(st.session_state.tickets)
-                        st.success("Neue Dateien erfolgreich hinzugefügt!")
-                        st.rerun()
-
-                st.markdown("---")
-                col_act1, col_act2 = st.columns(2)
-                with col_act1:
-                    neuer_status = st.selectbox(
-                        "Status ändern",
-                        ["Offen", "In Bearbeitung", "Erledigt"],
-                        index=[
-                            "Offen",
-                            "In Bearbeitung",
-                            "Erledigt",
-                        ].index(t.get("status", "Offen")),
-                        key=f"status_select_{t.get('id', 0)}_{idx}",
-                    )
-                    if neuer_status != t.get("status"):
-                        t["status"] = neuer_status
-                        save_tickets(st.session_state.tickets)
-                        st.success("Status aktualisiert!")
-                        st.rerun()
-
-                with col_act2:
-                    # Sicherheitsabfrage für Ticket-Löschung
-                    del_ticket_key = f"confirm_del_ticket_{t.get('id', 0)}_{idx}"
-                    if st.session_state.get(del_ticket_key, False):
-                        st.warning("Gesamtes Ticket wirklich löschen?")
-                        col_ty1, col_ty2 = st.columns(2)
-                        with col_ty1:
-                            if st.button(
-                                "Ja, löschen",
-                                key=f"yes_ticket_{t.get('id', 0)}_{idx}",
-                            ):
-                                st.session_state.tickets = [
-                                    item
-                                    for item in st.session_state.tickets
-                                    if item["id"] != t.get("id")
-                                ]
+                                t["beschreibung"] = new_desc
                                 save_tickets(st.session_state.tickets)
-                                st.session_state[del_ticket_key] = False
-                                st.success("Ticket gelöscht!")
+                                st.session_state[edit_key] = False
+                                st.success("Beschreibung aktualisiert!")
                                 st.rerun()
-                        with col_ty2:
+                        with col_b2:
                             if st.button(
-                                "Abbrechen",
-                                key=f"no_ticket_{t.get('id', 0)}_{idx}",
+                                "Abbrechen", key=f"cancel_desc_{t.get('id', 0)}"
                             ):
-                                st.session_state[del_ticket_key] = False
+                                st.session_state[edit_key] = False
                                 st.rerun()
                     else:
+                        st.markdown(f"> {t.get('beschreibung', '')}")
                         if st.button(
-                            "🗑️ Ticket komplett löschen",
-                            key=f"del_{t.get('id', 0)}_{idx}",
+                            "✏️ Beschreibung bearbeiten",
+                            key=f"btn_edit_{t.get('id', 0)}",
                         ):
-                            st.session_state[del_ticket_key] = True
+                            st.session_state[edit_key] = True
                             st.rerun()
+
+                    st.markdown("---")
+                    st.markdown("**Angehängte Dokumente & Dateien:**")
+
+                    if t.get("anhaenge"):
+                        for f_idx, anhang in enumerate(t["anhaenge"]):
+                            file_bytes = base64.b64decode(anhang["data"])
+                            col_fn, col_fv, col_fd = st.columns(
+                                [4, 1.5, 1]
+                            )
+                            with col_fn:
+                                st.write(f"📄 {anhang['name']}")
+                            with col_fv:
+                                show_key = f"show_{t.get('id', 0)}_{f_idx}"
+                                if st.button(
+                                    "👁️ Ansehen",
+                                    key=f"btn_prev_{t.get('id', 0)}_{f_idx}",
+                                ):
+                                    st.session_state[
+                                        show_key
+                                    ] = not st.session_state.get(
+                                        show_key, False
+                                    )
+                            with col_fd:
+                                del_file_key = f"confirm_del_file_{t.get('id', 0)}_{f_idx}"
+                                if st.session_state.get(
+                                    del_file_key, False
+                                ):
+                                    st.warning("Datei löschen?")
+                                    c_y, c_n = st.columns(2)
+                                    with c_y:
+                                        if st.button(
+                                            "Ja",
+                                            key=f"yes_file_{t.get('id', 0)}_{f_idx}",
+                                        ):
+                                            t["anhaenge"].pop(f_idx)
+                                            save_tickets(
+                                                st.session_state.tickets
+                                            )
+                                            st.session_state[
+                                                del_file_key
+                                            ] = False
+                                            st.success("Gelöscht!")
+                                            st.rerun()
+                                    with c_n:
+                                        if st.button(
+                                            "Nein",
+                                            key=f"no_file_{t.get('id', 0)}_{f_idx}",
+                                        ):
+                                            st.session_state[
+                                                del_file_key
+                                            ] = False
+                                            st.rerun()
+                                else:
+                                    if st.button(
+                                        "🗑️ Löschen",
+                                        key=f"del_file_{t.get('id', 0)}_{f_idx}",
+                                    ):
+                                        st.session_state[
+                                            del_file_key
+                                        ] = True
+                                        st.rerun()
+
+                            if st.session_state.get(
+                                f"show_{t.get('id', 0)}_{f_idx}", False
+                            ):
+                                if "image" in anhang["type"] or anhang[
+                                    "name"
+                                ].lower().endswith((".png", ".jpg", ".jpeg")):
+                                    st.image(
+                                        file_bytes,
+                                        caption=anhang["name"],
+                                        use_container_width=True,
+                                    )
+                                elif "pdf" in anhang["type"] or anhang[
+                                    "name"
+                                ].lower().endswith(".pdf"):
+                                    b64_pdf = base64.b64encode(
+                                        file_bytes
+                                    ).decode("utf-8")
+                                    pdf_display = f'<iframe src="data:application/pdf;base64,{b64_pdf}" width="100%" height="600px" type="application/pdf"></iframe>'
+                                    st.markdown(
+                                        pdf_display, unsafe_allow_html=True
+                                    )
+                                else:
+                                    st.download_button(
+                                        label=(
+                                            f"📥 Herunterladen:"
+                                            f" {anhang['name']}"
+                                        ),
+                                        data=file_bytes,
+                                        file_name=anhang["name"],
+                                        mime=anhang["type"],
+                                        key=(
+                                            f"dl_fallback_{t.get('id', 0)}_{f_idx}"
+                                        ),
+                                    )
+                    else:
+                        st.write("Keine Dateien angehängt.")
+
+                    with st.form(key=f"add_more_form_{t.get('id', 0)}"):
+                        more_files = st.file_uploader(
+                            "Weitere Dateien hinzufügen",
+                            type=["pdf", "png", "jpg", "jpeg"],
+                            accept_multiple_files=True,
+                            key=f"more_upload_{t.get('id', 0)}",
+                        )
+                        add_more_btn = st.form_submit_button(
+                            "Dateien zum Ticket hochladen"
+                        )
+                        if add_more_btn and more_files:
+                            if "anhaenge" not in t:
+                                t["anhaenge"] = []
+                            for file in more_files:
+                                bdata = file.read()
+                                b64_enc = base64.b64encode(bdata).decode(
+                                    "utf-8"
+                                )
+                                t["anhaenge"].append(
+                                    {
+                                        "name": file.name,
+                                        "data": b64_enc,
+                                        "type": file.type,
+                                    }
+                                )
+                            save_tickets(st.session_state.tickets)
+                            st.success("Neue Dateien erfolgreich hinzugefügt!")
+                            st.rerun()
+
+                    st.markdown("---")
+                    col_act1, col_act2 = st.columns(2)
+                    with col_act1:
+                        neuer_status = st.selectbox(
+                            "Status ändern",
+                            ["Offen", "In Bearbeitung", "Erledigt"],
+                            index=[
+                                "Offen",
+                                "In Bearbeitung",
+                                "Erledigt",
+                            ].index(t.get("status", "Offen")),
+                            key=f"status_select_{t.get('id', 0)}_{idx}",
+                        )
+                        if neuer_status != t.get("status"):
+                            t["status"] = neuer_status
+                            save_tickets(st.session_state.tickets)
+                            st.success("Status aktualisiert!")
+                            st.rerun()
+
+                    with col_act2:
+                        del_ticket_key = (
+                            f"confirm_del_ticket_{t.get('id', 0)}_{idx}"
+                        )
+                        if st.session_state.get(del_ticket_key, False):
+                            st.warning("Gesamtes Ticket wirklich löschen?")
+                            col_ty1, col_ty2 = st.columns(2)
+                            with col_ty1:
+                                if st.button(
+                                    "Ja, löschen",
+                                    key=f"yes_ticket_{t.get('id', 0)}_{idx}",
+                                ):
+                                    st.session_state.tickets = [
+                                        item
+                                        for item in st.session_state.tickets
+                                        if item["id"] != t.get("id")
+                                    ]
+                                    save_tickets(st.session_state.tickets)
+                                    st.session_state[del_ticket_key] = False
+                                    st.success("Ticket gelöscht!")
+                                    st.rerun()
+                            with col_ty2:
+                                if st.button(
+                                    "Abbrechen",
+                                    key=f"no_ticket_{t.get('id', 0)}_{idx}",
+                                ):
+                                    st.session_state[del_ticket_key] = False
+                                    st.rerun()
+                        else:
+                            if st.button(
+                                "🗑️ Ticket komplett löschen",
+                                key=f"del_{t.get('id', 0)}_{idx}",
+                            ):
+                                st.session_state[del_ticket_key] = True
+                                st.rerun()
