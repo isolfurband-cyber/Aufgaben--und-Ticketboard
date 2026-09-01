@@ -48,7 +48,23 @@ def load_tickets():
     if os.path.exists(TICKETS_FILE):
         with open(TICKETS_FILE, "r", encoding="utf-8") as f:
             try:
-                return json.load(f)
+                tickets = json.load(f)
+                # Fehlende Schlüssel bei alten Tickets automatisch ergänzen, um Abstürze zu verhindern
+                for t in tickets:
+                    t.setdefault("id", 1)
+                    t.setdefault("titel", "Ohne Titel")
+                    t.setdefault("objekt", "Talstr. 32, 07545 Gera")
+                    t.setdefault("kategorie", "Hausverwaltung Allgemein")
+                    t.setdefault("priorität", "Mittel")
+                    t.setdefault("status", "Offen")
+                    t.setdefault(
+                        "datum", datetime.now().strftime("%d.%m.%Y %H:%M")
+                    )
+                    t.setdefault("faellig", datetime.now().strftime("%d.%m.%Y"))
+                    t.setdefault("beschreibung", "")
+                    t.setdefault("ersteller", "Unbekannt")
+                    t.setdefault("anhaenge", [])
+                return tickets
             except json.JSONDecodeError:
                 return []
     return []
@@ -205,17 +221,17 @@ elif menu == "📊 Dashboard & Tickets":
         tickets = [
             t
             for t in tickets
-            if query in t["titel"].lower()
-            or query in t["beschreibung"].lower()
-            or query in t["objekt"].lower()
+            if query in t.get("titel", "").lower()
+            or query in t.get("beschreibung", "").lower()
+            or query in t.get("objekt", "").lower()
         ]
 
     if filter_status != "Alle":
-        tickets = [t for t in tickets if t["status"] == filter_status]
+        tickets = [t for t in tickets if t.get("status") == filter_status]
     if filter_prio != "Alle":
-        tickets = [t for t in tickets if t["priorität"] == filter_prio]
+        tickets = [t for t in tickets if t.get("priorität") == filter_prio]
     if filter_kat != "Alle":
-        tickets = [t for t in tickets if t["kategorie"] == filter_kat]
+        tickets = [t for t in tickets if t.get("kategorie") == filter_kat]
 
     if not tickets:
         st.info("Keine Tickets gefunden, die den Filterkriterien entsprechen.")
@@ -223,30 +239,33 @@ elif menu == "📊 Dashboard & Tickets":
         for idx, t in enumerate(reversed(tickets)):
             prio_color = (
                 "🔴"
-                if "Dringend" in t["priorität"]
+                if "Dringend" in t.get("priorität", "")
                 else "🟠"
-                if t["priorität"] == "Hoch"
+                if t.get("priorität") == "Hoch"
                 else "🟡"
-                if t["priorität"] == "Mittel"
+                if t.get("priorität") == "Mittel"
                 else "🟢"
             )
 
             with st.expander(
-                f"{prio_color} [#{t['id']}] {t['titel']} — Objekt: {t['objekt']} ({t['status']})"
+                f"{prio_color} [#{t.get('id', 0)}] {t.get('titel', 'Unbenannt')} — Objekt: {t.get('objekt', '')} ({t.get('status', 'Offen')})"
             ):
                 col_info1, col_info2 = st.columns(2)
                 with col_info1:
-                    st.write(f"**Kategorie:** {t['kategorie']}")
-                    st.write(f"**Erstellt am:** {t['datum']} von {t['ersteller']}")
-                    st.write(f"**Fällig bis:** {t['faellig']}")
+                    st.write(f"**Kategorie:** {t.get('kategorie', '')}")
+                    st.write(
+                        f"**Erstellt am:** {t.get('datum', '')} von"
+                        f" {t.get('ersteller', '')}"
+                    )
+                    st.write(f"**Fällig bis:** {t.get('faellig', '')}")
                 with col_info2:
-                    st.write(f"**Aktueller Status:** {t['status']}")
-                    st.write(f"**Priorität:** {t['priorität']}")
+                    st.write(f"**Aktueller Status:** {t.get('status', '')}")
+                    st.write(f"**Priorität:** {t.get('priorität', '')}")
 
                 st.markdown("---")
 
                 # Beschreibung bearbeiten
-                edit_key = f"edit_desc_mode_{t['id']}"
+                edit_key = f"edit_desc_mode_{t.get('id', 0)}"
                 if edit_key not in st.session_state:
                     st.session_state[edit_key] = False
 
@@ -254,13 +273,14 @@ elif menu == "📊 Dashboard & Tickets":
                 if st.session_state[edit_key]:
                     new_desc = st.text_area(
                         "Beschreibung bearbeiten",
-                        value=t["beschreibung"],
-                        key=f"desc_area_{t['id']}",
+                        value=t.get("beschreibung", ""),
+                        key=f"desc_area_{t.get('id', 0)}",
                     )
                     col_b1, col_b2 = st.columns(2)
                     with col_b1:
                         if st.button(
-                            "💾 Ändern speichern", key=f"save_desc_{t['id']}"
+                            "💾 Ändern speichern",
+                            key=f"save_desc_{t.get('id', 0)}",
                         ):
                             t["beschreibung"] = new_desc
                             save_tickets(st.session_state.tickets)
@@ -269,15 +289,15 @@ elif menu == "📊 Dashboard & Tickets":
                             st.rerun()
                     with col_b2:
                         if st.button(
-                            "Abbrechen", key=f"cancel_desc_{t['id']}"
+                            "Abbrechen", key=f"cancel_desc_{t.get('id', 0)}"
                         ):
                             st.session_state[edit_key] = False
                             st.rerun()
                 else:
-                    st.markdown(f"> {t['beschreibung']}")
+                    st.markdown(f"> {t.get('beschreibung', '')}")
                     if st.button(
                         "✏️ Beschreibung bearbeiten",
-                        key=f"btn_edit_{t['id']}",
+                        key=f"btn_edit_{t.get('id', 0)}",
                     ):
                         st.session_state[edit_key] = True
                         st.rerun()
@@ -292,25 +312,26 @@ elif menu == "📊 Dashboard & Tickets":
                         with col_fn:
                             st.write(f"📄 {anhang['name']}")
                         with col_fv:
-                            show_key = f"show_{t['id']}_{f_idx}"
+                            show_key = f"show_{t.get('id', 0)}_{f_idx}"
                             if st.button(
-                                "👁️ Ansehen", key=f"btn_prev_{t['id']}_{f_idx}"
+                                "👁️ Ansehen",
+                                key=f"btn_prev_{t.get('id', 0)}_{f_idx}",
                             ):
                                 st.session_state[show_key] = not st.session_state.get(
                                     show_key, False
                                 )
                         with col_fd:
                             if st.button(
-                                "🗑️ Löschen", key=f"del_file_{t['id']}_{f_idx}"
+                                "🗑️ Löschen",
+                                key=f"del_file_{t.get('id', 0)}_{f_idx}",
                             ):
                                 t["anhaenge"].pop(f_idx)
                                 save_tickets(st.session_state.tickets)
                                 st.success("Datei gelöscht!")
                                 st.rerun()
 
-                        # Datei-Vorschau im Browser
                         if st.session_state.get(
-                            f"show_{t['id']}_{f_idx}", False
+                            f"show_{t.get('id', 0)}_{f_idx}", False
                         ):
                             if "image" in anhang["type"] or anhang[
                                 "name"
@@ -336,18 +357,19 @@ elif menu == "📊 Dashboard & Tickets":
                                     data=file_bytes,
                                     file_name=anhang["name"],
                                     mime=anhang["type"],
-                                    key=f"dl_fallback_{t['id']}_{f_idx}",
+                                    key=(
+                                        f"dl_fallback_{t.get('id', 0)}_{f_idx}"
+                                    ),
                                 )
                 else:
                     st.write("Keine Dateien angehängt.")
 
-                # Weitere Dateien hinzufügen
-                with st.form(key=f"add_more_form_{t['id']}"):
+                with st.form(key=f"add_more_form_{t.get('id', 0)}"):
                     more_files = st.file_uploader(
                         "Weitere Dateien hinzufügen",
                         type=["pdf", "png", "jpg", "jpeg"],
                         accept_multiple_files=True,
-                        key=f"more_upload_{t['id']}",
+                        key=f"more_upload_{t.get('id', 0)}",
                     )
                     add_more_btn = st.form_submit_button(
                         "Dateien zum Ticket hochladen"
@@ -379,10 +401,10 @@ elif menu == "📊 Dashboard & Tickets":
                             "Offen",
                             "In Bearbeitung",
                             "Erledigt",
-                        ].index(t["status"]),
-                        key=f"status_select_{t['id']}_{idx}",
+                        ].index(t.get("status", "Offen")),
+                        key=f"status_select_{t.get('id', 0)}_{idx}",
                     )
-                    if neuer_status != t["status"]:
+                    if neuer_status != t.get("status"):
                         t["status"] = neuer_status
                         save_tickets(st.session_state.tickets)
                         st.success("Status aktualisiert!")
@@ -390,12 +412,13 @@ elif menu == "📊 Dashboard & Tickets":
 
                 with col_act2:
                     if st.button(
-                        "🗑️ Ticket komplett löschen", key=f"del_{t['id']}_{idx}"
+                        "🗑️ Ticket komplett löschen",
+                        key=f"del_{t.get('id', 0)}_{idx}",
                     ):
                         st.session_state.tickets = [
                             item
                             for item in st.session_state.tickets
-                            if item["id"] != t["id"]
+                            if item["id"] != t.get("id")
                         ]
                         save_tickets(st.session_state.tickets)
                         st.success("Ticket gelöscht!")
