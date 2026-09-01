@@ -14,7 +14,6 @@ st.set_page_config(
 try:
     USER_CREDENTIALS = dict(st.secrets["credentials"])
 except Exception:
-    # Fallback für lokale Tests, falls noch keine Secrets angelegt sind
     USER_CREDENTIALS = {"kare": "kare2026", "admin": "immobilien32"}
 
 if "authenticated" not in st.session_state:
@@ -41,8 +40,9 @@ if not st.session_state.authenticated:
                 st.error("Falscher Benutzername oder falsches Passwort!")
     st.stop()
 
-# --- DATENPERSISTENZ (JSON DATEI) ---
+# --- DATENPERSISTENZ (JSON DATEIEN) ---
 TICKETS_FILE = "tickets.json"
+TERMINE_FILE = "termine.json"
 
 
 def load_tickets():
@@ -75,8 +75,35 @@ def save_tickets(tickets):
         json.dump(tickets, f, ensure_ascii=False, indent=4)
 
 
+def load_termine():
+    if os.path.exists(TERMINE_FILE):
+        with open(TERMINE_FILE, "r", encoding="utf-8") as f:
+            try:
+                termine = json.load(f)
+                for term in termine:
+                    term.setdefault("id", 1)
+                    term.setdefault("titel", "Ohne Titel")
+                    term.setdefault(
+                        "datum", datetime.now().strftime("%Y-%m-%d")
+                    )
+                    term.setdefault("uhrzeit", "10:00")
+                    term.setdefault("notiz", "")
+                return termine
+            except json.JSONDecodeError:
+                return []
+    return []
+
+
+def save_termine(termine):
+    with open(TERMINE_FILE, "w", encoding="utf-8") as f:
+        json.dump(termine, f, ensure_ascii=False, indent=4)
+
+
 if "tickets" not in st.session_state:
     st.session_state.tickets = load_tickets()
+
+if "termine" not in st.session_state:
+    st.session_state.termine = load_termine()
 
 # --- HAUPTAPP (NACH LOGIN) ---
 st.title("📋 KARE-Immobilien – Internes Aufgaben- & Ticketboard")
@@ -86,12 +113,115 @@ st.markdown(
 
 menu = st.sidebar.selectbox(
     "Menü",
-    ["📊 Dashboard & Tickets", "➕ Neues Ticket erstellen", "🚪 Abmelden"],
+    [
+        "📊 Dashboard & Tickets",
+        "➕ Neues Ticket erstellen",
+        "📅 Termine verwalten",
+        "🚪 Abmelden",
+    ],
 )
 
 if menu == "🚪 Abmelden":
     st.session_state.authenticated = False
     st.rerun()
+
+elif menu == "📅 Termine verwalten":
+    st.header("📅 Termin- und Kalenderübersicht")
+
+    with st.form("new_termin_form"):
+        st.subheader("Neuen Termin eintragen")
+        col_t1, col_t2 = st.columns(2)
+        with col_t1:
+            termin_titel = st.text_input("Titel / Zweck des Termins")
+            termin_datum = st.date_input(
+                "Datum", datetime.now()
+            )
+        with col_t2:
+            termin_uhrzeit = st.text_input("Uhrzeit (z.B. 14:30 Uhr)", "10:00")
+            termin_notiz = st.text_area("Notizen / Details zum Termin", "")
+
+        submit_termin = st.form_submit_button("Termin speichern")
+        if submit_termin:
+            if not termin_titel:
+                st.error("Bitte gib einen Titel für den Termin ein!")
+            else:
+                neuer_termin = {
+                    "id": (
+                        max([term["id"] for term in st.session_state.termine])
+                        + 1
+                        if st.session_state.termine
+                        else 1
+                    ),
+                    "titel": termin_titel,
+                    "datum": termin_datum.strftime("%Y-%m-%d"),
+                    "uhrzeit": termin_uhrzeit,
+                    "notiz": termin_notiz,
+                }
+                st.session_state.termine.append(neuer_termin)
+                save_termine(st.session_state.termine)
+                st.success("Termin erfolgreich gespeichert!")
+                st.rerun()
+
+    st.markdown("---")
+    st.subheader("Gespeicherte Termine")
+
+    if not st.session_state.termine:
+        st.info("Aktuell sind keine Termine eingetragen.")
+    else:
+        # Nach Datum sortieren
+        sorted_termine = sorted(
+            st.session_state.termine, key=lambda x: x["datum"]
+        )
+        heute = datetime.now().date()
+
+        for idx, term in enumerate(sorted_termine):
+            try:
+                t_datum_obj = datetime.strptime(
+                    term["datum"], "%Y-%m-%d"
+                ).date()
+            except ValueError:
+                t_datum_obj = heute
+
+            is_past = t_datum_obj < heute
+
+            # Farbliche Kennzeichnung: Vergangen = Rot, Zukunft/Heute = Normal/Grünlich
+            card_color = (
+                "rgba(255, 75, 75, 0.15)"
+                if is_past
+                else "rgba(40, 167, 69, 0.1)"
+            )
+            border_color = "#ff4b4b" if is_past else "#28a745"
+            status_text = (
+                "🔴 [VERGANGEN]"
+                if is_past
+                else "🟢 [ZUKUNFT]"
+                if t_datum_obj > heute
+                else "🔵 [HEUTE]"
+            )
+
+            with st.container():
+                st.markdown(
+                    f"""
+                    <div style="padding: 15px; border-radius: 8px; background-color: {card_color}; border-left: 5px solid {border_color}; margin-bottom: 10px;">
+                        <h4>{status_text} {term['titel']}</h4>
+                        <p><b>Datum:</b> {term['datum']} um {term['uhrzeit']} Uhr</p>
+                        <p><b>Notiz:</b> {term['notiz'] if term['notiz'] else 'Keine Notizen'}</p>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+
+                if st.button(
+                    "🗑️ Termin löschen", key=f"del_termin_{term['id']}_{idx}"
+                ):
+                    st.session_state.termine = [
+                        item
+                        for item in st.session_state.termine
+                        if item["id"] != term["id"]
+                    ]
+                    save_termine(st.session_state.termine)
+                    st.success("Termin gelöscht!")
+                    st.rerun()
 
 elif menu == "➕ Neues Ticket erstellen":
     st.header("Neues Ticket / Aufgabe anlegen")
@@ -178,10 +308,7 @@ elif menu == "➕ Neues Ticket erstellen":
 
                 st.session_state.tickets.append(neues_ticket)
                 save_tickets(st.session_state.tickets)
-                st.success(
-                    "Ticket erfolgreich erstellt und gespeichert! Du kannst"
-                    " es im Dashboard einsehen."
-                )
+                st.success("Ticket erfolgreich erstellt und gespeichert!")
 
 elif menu == "📊 Dashboard & Tickets":
     st.header("Aktive Tickets & Aufgaben")
@@ -264,7 +391,6 @@ elif menu == "📊 Dashboard & Tickets":
 
                 st.markdown("---")
 
-                # Beschreibung bearbeiten
                 edit_key = f"edit_desc_mode_{t.get('id', 0)}"
                 if edit_key not in st.session_state:
                     st.session_state[edit_key] = False
