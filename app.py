@@ -117,10 +117,24 @@ menu = st.sidebar.selectbox(
     "Menü", ["📊 Dashboard & Tickets", "➕ Neues Ticket erstellen", "🚪 Abmelden"]
 )
 
+# 1. BEREICH: PROTOKOLLE & APPS (JETZT IN DER MITTE)
+st.sidebar.markdown("---")
+st.sidebar.subheader("🌐 KARE-Protokolle & Apps")
+st.sidebar.markdown(
+    """
+- [🏗️ Baustellenprotokoll](https://baustellenprotokoll-nwka229yyd9brp6zkbtwal.streamlit.app/)
+- [💥 Schadenprotokoll](https://schadenprotokoll-ge8xt8a7tkjcb44m4te8zo.streamlit.app/)
+- [🏠 Wohnungsprotokoll](https://wohnungsprotokoll-aoectc2n5tvphcg5eevjsm.streamlit.app/)
+- [📂 Ordnungs- & Verstoßprotokoll](https://qyzzw9sm7htvbfuj6sc8k6.streamlit.app/)
+""",
+    unsafe_allow_html=True,
+)
+
+# 2. BEREICH: TERMINE (JETZT GANZ UNTEN)
 st.sidebar.markdown("---")
 st.sidebar.subheader("📅 Termine")
 
-# Formular für neuen Termin direkt unter dem Dropdown in der Sidebar
+# Formular für neuen Termin direkt in der Sidebar
 with st.sidebar.form("sidebar_termin_form"):
     t_titel = st.text_input("Termin-Titel")
     t_datum = st.date_input("Datum", datetime.now())
@@ -211,19 +225,6 @@ else:
             if st.sidebar.button("🗑️ Löschen", key=f"del_term_{term['id']}_{idx}"):
                 st.session_state[del_term_key] = True
                 st.rerun()
-
-# --- NEUER BEREICH: SCHNELLZUGRIFF AUF DIE WEITEREN KARE-APPS ---
-st.sidebar.markdown("---")
-st.sidebar.subheader("🌐 KARE-Protokolle & Apps")
-st.sidebar.markdown(
-    """
-- [🏗️ Baustellenprotokoll](https://baustellenprotokoll-nwka229yyd9brp6zkbtwal.streamlit.app/)
-- [💥 Schadenprotokoll](https://schadenprotokoll-ge8xt8a7tkjcb44m4te8zo.streamlit.app/)
-- [🏠 Wohnungsprotokoll](https://wohnungsprotokoll-aoectc2n5tvphcg5eevjsm.streamlit.app/)
-- [📂 Weitere App](https://qyzzw9sm7htvbfuj6sc8k6.streamlit.app/)
-""",
-    unsafe_allow_html=True,
-)
 
 
 # --- SEITEN-LOGIK (HAUPTBEREICH) ---
