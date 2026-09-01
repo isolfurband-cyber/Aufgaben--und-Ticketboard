@@ -106,10 +106,12 @@ if "termine" not in st.session_state:
     st.session_state.termine = load_termine()
 
 # --- HAUPTAPP (NACH LOGIN) ---
-# Hier ersetzt durch kompakten HTML-Titel statt st.title()
+# Hier über font-size: 1.5rem; die Größe explizit kleiner eingestellt
 st.markdown(
     """
-    <h2 style='margin-bottom: 0px;'>📋 KARE-Immobilien – Internes Aufgaben- & Ticketboard</h2>
+    <div style='font-size: 1.5rem; font-weight: bold; margin-bottom: 0px;'>
+        📋 KARE-Immobilien – Internes Aufgaben- & Ticketboard
+    </div>
     """,
     unsafe_allow_html=True,
 )
