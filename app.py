@@ -106,7 +106,13 @@ if "termine" not in st.session_state:
     st.session_state.termine = load_termine()
 
 # --- HAUPTAPP (NACH LOGIN) ---
-st.title("📋 KARE-Immobilien – Internes Aufgaben- & Ticketboard")
+# Hier ersetzt durch kompakten HTML-Titel statt st.title()
+st.markdown(
+    """
+    <h2 style='margin-bottom: 0px;'>📋 KARE-Immobilien – Internes Aufgaben- & Ticketboard</h2>
+    """,
+    unsafe_allow_html=True,
+)
 st.markdown(
     f"Eingeloggt als: **{st.session_state.user}** | Talstr. 32, 07545 Gera"
 )
@@ -175,7 +181,6 @@ if menu == "🚪 Abmelden":
     st.rerun()
 
 elif menu == "📅 Termine":
-    # Kleinere Überschrift gewählt (Markdown statt st.header)
     st.markdown(
         "### 📅 Gespeicherte Termine",
         help="Übersicht aller eingetragenen Termine",
@@ -213,7 +218,6 @@ elif menu == "📅 Termine":
                 f" | <i>{term['notiz']}</i>" if term["notiz"] else ""
             )
 
-            # Extrem kompakter Abstand (margin-bottom stark reduziert auf 3px)
             st.markdown(
                 f"""
                 <div style="padding: 6px 10px; border-radius: 5px; background-color: {bg_color}; border-left: 4px solid {border_color}; margin-bottom: 3px; font-size: 0.9em;">
@@ -223,7 +227,6 @@ elif menu == "📅 Termine":
                 unsafe_allow_html=True,
             )
 
-            # Löschen-Button direkt eng darunter
             del_term_key = f"confirm_del_term_{term['id']}_{idx}"
             if st.session_state.get(del_term_key, False):
                 st.warning("Termin wirklich löschen?")
@@ -256,7 +259,6 @@ elif menu == "📅 Termine":
                     st.session_state[del_term_key] = True
                     st.rerun()
 
-            # Minimaler Trenner zwischen den Termineinträgen
             st.markdown(
                 "<div style='margin-bottom: 8px;'></div>",
                 unsafe_allow_html=True,
