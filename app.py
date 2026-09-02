@@ -14,7 +14,7 @@ st.set_page_config(
 try:
     USER_CREDENTIALS = dict(st.secrets["credentials"])
 except Exception:
-    USER_CREDENTIALS = {"kare": "kare2026", "admin": "immobilien32"}
+    USER_CREDENTIALS = {"kare"}
 
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
