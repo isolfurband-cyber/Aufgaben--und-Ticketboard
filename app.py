@@ -140,6 +140,7 @@ st.sidebar.markdown(
 - [🏠 Wohnungsprotokoll](https://wohnungsprotokoll-aoectc2n5tvphcg5eevjsm.streamlit.app/)
 - [📂 Ordnungs- & Verstoßprotokoll](https://qyzzw9sm7htvbfuj6sc8k6.streamlit.app/)
 - [🧾 Quittungen](https://aufgaben--und-ticketboard-jago3m8goqpy2vbmkg4wza.streamlit.app/)
+- [🏢 Expose](https://appexposepy-3eut7yixhwmlkm6nvaebvz.streamlit.app/)
 """,
     unsafe_allow_html=True,
 )
