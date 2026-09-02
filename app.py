@@ -161,6 +161,22 @@ with st.sidebar.form("sidebar_termin_form"):
         if not t_titel:
             st.sidebar.error("Bitte Titel angeben!")
         else:
+            # Wochentag auf Deutsch ermitteln und anhängen
+            wochentage = {
+                "Monday": "Montag",
+                "Tuesday": "Dienstag",
+                "Wednesday": "Mittwoch",
+                "Thursday": "Donnerstag",
+                "Friday": "Freitag",
+                "Saturday": "Samstag",
+                "Sunday": "Sonntag",
+            }
+            en_tag = t_datum.strftime("%A")
+            de_tag = wochentage.get(en_tag, en_tag)
+            
+            # Gespeichertes Format: "YYYY-MM-DD (Wochentag)"
+            datum_str = f"{t_datum.strftime('%Y-%m-%d')} ({de_tag})"
+
             neuer_termin = {
                 "id": (
                     max([term["id"] for term in st.session_state.termine]) + 1
@@ -168,7 +184,7 @@ with st.sidebar.form("sidebar_termin_form"):
                     else 1
                 ),
                 "titel": t_titel,
-                "datum": t_datum.strftime("%Y-%m-%d"),
+                "datum": datum_str,
                 "uhrzeit": t_uhrzeit,
                 "notiz": t_notiz,
             }
@@ -203,20 +219,30 @@ elif menu == "📅 Termine":
 
         for idx, term in enumerate(sorted_termine):
             try:
+                # Extrahiert das reine YYYY-MM-DD aus dem String (ignoriert den Wochentag in Klammern beim Parsen)
+                reines_datum_str = term["datum"].split(" ")[0]
                 t_datum_obj = datetime.strptime(
-                    term["datum"], "%Y-%m-%d"
+                    reines_datum_str, "%Y-%m-%d"
                 ).date()
             except ValueError:
                 t_datum_obj = heute
 
+            is_today = (t_datum_obj == heute)
             is_past = t_datum_obj < heute
-            bg_color = (
-                "rgba(255, 75, 75, 0.12)"
-                if is_past
-                else "rgba(255, 255, 255, 0.04)"
-            )
-            border_color = "#ff4b4b" if is_past else "#4b8bbe"
-            status_icon = "🔴" if is_past else "📅"
+
+            # Farbgebung: Heute = Grün, Vergangenheit = Rot, Zukunft = Standard
+            if is_today:
+                bg_color = "rgba(40, 167, 69, 0.15)"
+                border_color = "#28a745"
+                status_icon = "🟢"
+            elif is_past:
+                bg_color = "rgba(255, 75, 75, 0.12)"
+                border_color = "#ff4b4b"
+                status_icon = "🔴"
+            else:
+                bg_color = "rgba(255, 255, 255, 0.04)"
+                border_color = "#4b8bbe"
+                status_icon = "📅"
 
             notiz_text = (
                 f" | <i>{term['notiz']}</i>" if term["notiz"] else ""
