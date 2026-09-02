@@ -14,7 +14,8 @@ st.set_page_config(
 try:
     USER_CREDENTIALS = dict(st.secrets["credentials"])
 except Exception:
-USER_CREDENTIALS = dict(st.secrets["credentials"])
+    st.error("Fehler: Keine Zugangsdaten in den Streamlit Secrets gefunden. Bitte trage sie im Cloud-Dashboard ein.")
+    st.stop()
 
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
