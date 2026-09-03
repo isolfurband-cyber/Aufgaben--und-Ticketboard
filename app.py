@@ -142,6 +142,7 @@ st.sidebar.markdown(
 - [📂 Ordnungs- & Verstoßprotokoll](https://qyzzw9sm7htvbfuj6sc8k6.streamlit.app/)
 - [🧾 Quittungen](https://aufgaben--und-ticketboard-jago3m8goqpy2vbmkg4wza.streamlit.app/)
 - [🏢 Expose](https://appexposepy-3eut7yixhwmlkm6nvaebvz.streamlit.app/)
+- [🔐 Zählerprotokoll](https://hfytg3in6ulhl7b3dzafrq.streamlit.app/)
 """,
     unsafe_allow_html=True,
 )
