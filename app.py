@@ -43,7 +43,6 @@ if not st.session_state.authenticated:
 
 # --- DATENPERSISTENZ (JSON DATEIEN) ---
 TICKETS_FILE = "tickets.json"
-TERMINE_FILE = "termine.json"
 
 
 def load_tickets():
@@ -76,35 +75,8 @@ def save_tickets(tickets):
         json.dump(tickets, f, ensure_ascii=False, indent=4)
 
 
-def load_termine():
-    if os.path.exists(TERMINE_FILE):
-        with open(TERMINE_FILE, "r", encoding="utf-8") as f:
-            try:
-                termine = json.load(f)
-                for term in termine:
-                    term.setdefault("id", 1)
-                    term.setdefault("titel", "Ohne Titel")
-                    term.setdefault(
-                        "datum", datetime.now().strftime("%Y-%m-%d")
-                    )
-                    term.setdefault("uhrzeit", "10:00")
-                    term.setdefault("notiz", "")
-                return termine
-            except json.JSONDecodeError:
-                return []
-    return []
-
-
-def save_termine(termine):
-    with open(TERMINE_FILE, "w", encoding="utf-8") as f:
-        json.dump(termine, f, ensure_ascii=False, indent=4)
-
-
 if "tickets" not in st.session_state:
     st.session_state.tickets = load_tickets()
-
-if "termine" not in st.session_state:
-    st.session_state.termine = load_termine()
 
 # --- HAUPTAPP (NACH LOGIN) ---
 st.markdown(
@@ -125,13 +97,12 @@ menu = st.sidebar.selectbox(
     "Menü",
     [
         "📊 Dashboard & Tickets",
-        "📅 Termine",
         "➕ Neues Ticket erstellen",
         "🚪 Abmelden",
     ],
 )
 
-# 1. BEREICH: PROTOKOLLE & APPS IN DER MITTE DER SIDEBAR (Inkl. Quittungen)
+# BEREICH: PROTOKOLLE & APPS IN DER SIDEBAR (Inkl. Quittungen)
 st.sidebar.markdown("---")
 st.sidebar.subheader("🌐 KARE-Protokolle & Apps")
 st.sidebar.markdown(
@@ -147,153 +118,12 @@ st.sidebar.markdown(
     unsafe_allow_html=True,
 )
 
-# 2. BEREICH: TERMIN-ERSTELLUNG GANZ UNTEN IN DER SIDEBAR
-st.sidebar.markdown("---")
-st.sidebar.subheader("📅 Neuen Termin erfassen")
-
-with st.sidebar.form("sidebar_termin_form"):
-    t_titel = st.text_input("Termin-Titel")
-    t_datum = st.date_input("Datum", datetime.now())
-    t_uhrzeit = st.text_input("Uhrzeit", "10:00")
-    t_notiz = st.text_area("Notiz (optional)", "")
-
-    submit_sidebar_termin = st.form_submit_button("Termin speichern")
-    if submit_sidebar_termin:
-        if not t_titel:
-            st.sidebar.error("Bitte Titel angeben!")
-        else:
-            # Wochentag auf Deutsch ermitteln und anhängen
-            wochentage = {
-                "Monday": "Montag",
-                "Tuesday": "Dienstag",
-                "Wednesday": "Mittwoch",
-                "Thursday": "Donnerstag",
-                "Friday": "Freitag",
-                "Saturday": "Samstag",
-                "Sunday": "Sonntag",
-            }
-            en_tag = t_datum.strftime("%A")
-            de_tag = wochentage.get(en_tag, en_tag)
-            
-            # Gespeichertes Format: "YYYY-MM-DD (Wochentag)"
-            datum_str = f"{t_datum.strftime('%Y-%m-%d')} ({de_tag})"
-
-            neuer_termin = {
-                "id": (
-                    max([term["id"] for term in st.session_state.termine]) + 1
-                    if st.session_state.termine
-                    else 1
-                ),
-                "titel": t_titel,
-                "datum": datum_str,
-                "uhrzeit": t_uhrzeit,
-                "notiz": t_notiz,
-            }
-            st.session_state.termine.append(neuer_termin)
-            save_termine(st.session_state.termine)
-            st.sidebar.success("Termin gespeichert!")
-            st.rerun()
-
 
 # --- SEITEN-LOGIK (HAUPTBEREICH) ---
 
 if menu == "🚪 Abmelden":
     st.session_state.authenticated = False
     st.rerun()
-
-elif menu == "📅 Termine":
-    st.markdown(
-        "### 📅 Gespeicherte Termine",
-        help="Übersicht aller eingetragenen Termine",
-    )
-
-    if not st.session_state.termine:
-        st.info(
-            "Keine Termine vorhanden. Du kannst links über das Formular neue"
-            " Termine hinzufügen."
-        )
-    else:
-        sorted_termine = sorted(
-            st.session_state.termine, key=lambda x: x["datum"], reverse=True
-        )
-        heute = datetime.now().date()
-
-        for idx, term in enumerate(sorted_termine):
-            try:
-                # Extrahiert das reine YYYY-MM-DD aus dem String (ignoriert den Wochentag in Klammern beim Parsen)
-                reines_datum_str = term["datum"].split(" ")[0]
-                t_datum_obj = datetime.strptime(
-                    reines_datum_str, "%Y-%m-%d"
-                ).date()
-            except ValueError:
-                t_datum_obj = heute
-
-            is_today = (t_datum_obj == heute)
-            is_past = t_datum_obj < heute
-
-            # Farbgebung: Heute = Grün, Vergangenheit = Rot, Zukunft = Standard
-            if is_today:
-                bg_color = "rgba(40, 167, 69, 0.15)"
-                border_color = "#28a745"
-                status_icon = "🟢"
-            elif is_past:
-                bg_color = "rgba(255, 75, 75, 0.12)"
-                border_color = "#ff4b4b"
-                status_icon = "🔴"
-            else:
-                bg_color = "rgba(255, 255, 255, 0.04)"
-                border_color = "#4b8bbe"
-                status_icon = "📅"
-
-            notiz_text = (
-                f" | <i>{term['notiz']}</i>" if term["notiz"] else ""
-            )
-
-            st.markdown(
-                f"""
-                <div style="padding: 6px 10px; border-radius: 5px; background-color: {bg_color}; border-left: 4px solid {border_color}; margin-bottom: 3px; font-size: 0.9em;">
-                    <b>{status_icon} {term['titel']}</b> &nbsp;|&nbsp; 🕒 <b>{term['datum']}</b>, {term['uhrzeit']} Uhr{notiz_text}
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-
-            del_term_key = f"confirm_del_term_{term['id']}_{idx}"
-            if st.session_state.get(del_term_key, False):
-                st.warning("Termin wirklich löschen?")
-                col_ya1, col_ya2 = st.columns(2)
-                with col_ya1:
-                    if st.button(
-                        "Ja, löschen", key=f"yes_term_{term['id']}_{idx}"
-                    ):
-                        st.session_state.termine = [
-                            item
-                            for item in st.session_state.termine
-                            if item["id"] != term["id"]
-                        ]
-                        save_termine(st.session_state.termine)
-                        st.session_state[del_term_key] = False
-                        st.success("Gelöscht!")
-                        st.rerun()
-                with col_ya2:
-                    if st.button(
-                        "Abbrechen", key=f"no_term_{term['id']}_{idx}"
-                    ):
-                        st.session_state[del_term_key] = False
-                        st.rerun()
-            else:
-                if st.button(
-                    "🗑️ Löschen",
-                    key=f"del_term_{term['id']}_{idx}",
-                    help="Termin löschen",
-                ):
-                    st.session_state[del_term_key] = True
-                    st.rerun()
-
-            st.markdown(
-                "<div style='margin-bottom: 8px;'></div>",
-                unsafe_allow_html=True,
-            )
 
 elif menu == "➕ Neues Ticket erstellen":
     st.header("Neues Ticket / Aufgabe anlegen")
